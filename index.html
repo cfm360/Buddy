@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Board of Elections: Albany County Election Districts</title>
+<link rel="icon" href="img/icon.png">
+<link rel="apple-touch-icon" href="img/icon.png">
+<link rel="apple-touch-icon-precomposed" href="img/icon.png">
+<link rel="stylesheet" media="all" href="css/base.css">
+<link rel="stylesheet" media="only screen and (max-width: 800px)" href="css/mobile.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<meta charset="utf-8">
+<meta name="keywords" content="albany,county,ny,us">
+<meta name="author" content="Albany County">
+<!--<meta http-equiv="Refresh" content="300">-->
+<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?v=3.4&amp;sensor=false"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+if (window.attachEvent) {window.attachEvent('onload', detectBrowser);}
+else if (window.addEventListener) {window.addEventListener('load', detectBrowser, false);}
+else {document.addEventListener('load', detectBrowser, false);} 
+
+function detectBrowser() {
+var nVer = navigator.appVersion;
+var nAgt = navigator.userAgent;
+var browserName  = navigator.appName;
+var fullVersion  = ''+parseFloat(navigator.appVersion); 
+var majorVersion = parseInt(navigator.appVersion,10);
+var nameOffset,verOffset,ix;
+
+// In Opera, the true version is after "Opera" or after "Version"
+if ((verOffset=nAgt.indexOf("Opera"))!=-1) {
+ browserName = "Opera";
+ fullVersion = nAgt.substring(verOffset+6);
+ if ((verOffset=nAgt.indexOf("Version"))!=-1) 
+   fullVersion = nAgt.substring(verOffset+8);
+}
+// In MSIE, the true version is after "MSIE" in userAgent
+else if ((verOffset=nAgt.indexOf("MSIE"))!=-1) {
+ browserName = "Microsoft Internet Explorer";
+ fullVersion = nAgt.substring(verOffset+5);
+}
+// In Chrome, the true version is after "Chrome" 
+else if ((verOffset=nAgt.indexOf("Chrome"))!=-1) {
+ browserName = "Chrome";
+ fullVersion = nAgt.substring(verOffset+7);
+}
+// In Safari, the true version is after "Safari" or after "Version" 
+else if ((verOffset=nAgt.indexOf("Safari"))!=-1) {
+ browserName = "Safari";
+ fullVersion = nAgt.substring(verOffset+7);
+ if ((verOffset=nAgt.indexOf("Version"))!=-1) 
+   fullVersion = nAgt.substring(verOffset+8);
+}
+// In Firefox, the true version is after "Firefox" 
+else if ((verOffset=nAgt.indexOf("Firefox"))!=-1) {
+ browserName = "Firefox";
+ fullVersion = nAgt.substring(verOffset+8);
+}
+// In most other browsers, "name/version" is at the end of userAgent 
+else if ( (nameOffset=nAgt.lastIndexOf(' ')+1) < (verOffset=nAgt.lastIndexOf('/')) ) 
+{
+ browserName = nAgt.substring(nameOffset,verOffset);
+ fullVersion = nAgt.substring(verOffset+1);
+ if (browserName.toLowerCase()==browserName.toUpperCase()) {
+  browserName = navigator.appName;
+ }
+}
+// trim the fullVersion string at semicolon/space if present
+if ((ix=fullVersion.indexOf(";"))!=-1) fullVersion=fullVersion.substring(0,ix);
+if ((ix=fullVersion.indexOf(" "))!=-1) fullVersion=fullVersion.substring(0,ix);
+
+majorVersion = parseInt(''+fullVersion,10);
+if (isNaN(majorVersion)) {
+ fullVersion  = ''+parseFloat(navigator.appVersion); 
+ majorVersion = parseInt(navigator.appVersion,10);
+}
+
+if(browserName == 'Microsoft Internet Explorer' && majorVersion < 8){
+alert('You are using ' +browserName+ ' ' +fullVersion+ '.  This application requires Microsoft Internet Explorer 8 or higher.');
+window.location = "http://www.albanycounty.com/vote/"
+}
+//document.write('Browser name  = '+browserName+'<br>');
+//document.write('Full version  = '+fullVersion+'<br>');
+//document.write('Major version = '+majorVersion+'<br>');
+//document.write('navigator.appName = '+navigator.appName+'<br>');
+//document.write('navigator.userAgent = '+navigator.userAgent+'<br>');
+}
+
+var center = new google.maps.LatLng(42.642657, -73.960811);
+var zoom = 11;
+var legend_width = '150px';
+var tableid = 1267011;
+var location_column = 'geometry';
+var towns = {'Select City/Town':'','Albany':'ALB','Cohoes':'COH','Watervliet':'WAT','Berne':'BRN','Bethlehem':'BET','Coeymans':'COE','Colonie':'COL','Green Island':'GRI','Guilderland':'GUI','Knox':'KNX','New Scotland':'NEW','Rensselaerville':'REN','Westerlo':'WES'};
+var map, layer, whereclause;
+
+google.load('visualization', '1');
+
+function initialize() {
+  
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: center,
+    zoom: zoom,
+    mapTypeId: google.maps.MapTypeId.ROADMAP
+  });
+  
+  layer = new google.maps.FusionTablesLayer({
+    query: {
+      select: location_column,
+      from: tableid,
+	  where: whereclause
+    }
+  });
+  layer.setMap(map);
+  resize(); 
+  init_townmenu();
+}
+
+function init_townmenu() {
+var townmenu = document.getElementById('townselector');
+	for(town in towns) {
+		var option = document.createElement('option');
+		option.setAttribute('value', town);
+		option.innerHTML = town;
+		townmenu.appendChild(option);
+	}
+}
+
+function init_wardmenu(town){
+document.getElementById('wardselector').style.display = 'none';
+document.getElementById('edselector').style.display = 'none';
+document.getElementById('edselectdiv').style.display = 'none';
+tval = town;
+townarr = towns[town];
+  if(townarr == 'ALB' || townarr == 'COH' || townarr == 'WAT') {
+    document.getElementById('wardselectdiv').style.display = 'inline';
+	document.getElementById('wardselector').style.display = 'inline';
+	var FT_Query_ColumnName = "SELECT 'WARD' FROM " + tableid + " WHERE 'Town' = '" + townarr + "'";
+	var queryText = encodeURIComponent(FT_Query_ColumnName);
+	var query = new google.visualization.Query('http://www.google.com/fusiontables/gvizdata?tq='  + queryText);
+	query.send(createWardDropdown);
+	if(townarr == 'ALB') {
+	center = new google.maps.LatLng(42.6526, -73.7562);
+	zoom = 12;
+	}
+	if(townarr == 'COH') {
+	center = new google.maps.LatLng(42.7742, -73.7001);
+	zoom = 14;
+	}
+	if(townarr == 'WAT') {
+	center = new google.maps.LatLng(42.7301, -73.7012);
+	zoom = 14;
+	}
+	column = townarr;
+  }
+  else {
+    document.getElementById('wardselectdiv').style.display = 'none';
+	if(townarr == 'COL') {
+	center = new google.maps.LatLng(42.7179, -73.8335);
+	zoom = 12;
+	}
+	if(townarr == 'GUI') {
+	center = new google.maps.LatLng(42.7045, -73.9115);
+	zoom = 12;
+	}
+	if(townarr == 'BET') {
+	center = new google.maps.LatLng(42.5779, -73.8184);
+	zoom = 12;
+	}
+	if(townarr == 'WES') {
+	center = new google.maps.LatLng(42.5151, -74.0454);
+	zoom = 12;
+	}
+	if(townarr == 'COE') {
+	center = new google.maps.LatLng(42.474, -73.7923);
+	zoom = 12;
+	}
+	if(townarr == 'REN') {
+	center = new google.maps.LatLng(42.5161, -74.1383);
+	zoom = 12;
+	}
+	if(townarr == 'BRN') {
+	center = new google.maps.LatLng(42.6254, -74.1335);
+	zoom = 12;
+	}
+	if(townarr == 'NEW') {
+	center = new google.maps.LatLng(42.6287, -73.9135);
+	zoom = 12;
+	}
+	if(townarr == 'KNX') {
+	center = new google.maps.LatLng(42.6711, -74.1161);
+	zoom = 12;
+	}
+	if(townarr == 'GRI') {
+	center = new google.maps.LatLng(42.7442, -73.6915);
+	zoom = 14;
+	}
+  ward = townarr + '000';
+  init_edmenu(ward);
+  }
+map = new google.maps.Map(document.getElementById('map'), {
+	center: center,
+	zoom: zoom,
+	mapTypeId: google.maps.MapTypeId.ROADMAP
+});
+	whereclause = "Town = '" + townarr + "'";
+	layer = new google.maps.FusionTablesLayer({
+		query: {
+			select: location_column,
+			from: tableid,
+			where: whereclause
+		}
+	});
+	layer.setMap(map);
+updateLegend(column, tval);
+}
+
+function createWardDropdown(response) {
+if (!response) {
+  alert('no response');
+  return;
+}
+if (response.isError()) {
+  alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+  return;
+} 
+  numRows = response.getDataTable().getNumberOfRows();
+  numCols = response.getDataTable().getNumberOfColumns();
+  var columns = {};
+  for (var i = 0; i < numRows; i++) {
+    var column = response.getDataTable().getValue(i,0);
+    columns[column] = column;
+  }
+  var columnNameDropdown = "Ward:<br /> <select id='wardselector' onchange='init_edmenu(this.value);'>"
+  columnNameDropdown += '<option selected>Select Ward<\/option>';
+  for (column in columns) {
+    columnNameDropdown += "<option value='"+column+"'>"+column+"</option>"
+  }
+  columnNameDropdown += "</select>"
+  document.getElementById('wardselector').parentNode.innerHTML = columnNameDropdown;
+}
+
+function init_edmenu(ward){
+document.getElementById('edselectdiv').style.display = 'inline';
+var FT_Query_ColumnName = "SELECT 'DISTRICT' FROM " + tableid + " WHERE 'WARD' = '" + ward + "'";
+var queryText = encodeURIComponent(FT_Query_ColumnName);
+var query = new google.visualization.Query('http://www.google.com/fusiontables/gvizdata?tq='  + queryText);
+query.send(createEdDropdown);
+	if(ward == 'ALB001' || ward == 'ALB002') {
+	center = new google.maps.LatLng(42.6366, -73.7750);
+	zoom = 14;
+	}
+	if(ward == 'ALB003') {
+	center = new google.maps.LatLng(42.6566, -73.7629);
+	zoom = 15;
+	}
+	if(ward == 'ALB004') {
+	center = new google.maps.LatLng(42.6650, -73.7323);
+	zoom = 14;
+	}
+	if(ward == 'ALB005') {
+	center = new google.maps.LatLng(42.6707, -73.7632);
+	zoom = 15;
+	}
+	if(ward == 'ALB006') {
+	center = new google.maps.LatLng(42.6543, -73.7709);
+	zoom = 16;
+	}
+	if(ward == 'ALB007') {
+	center = new google.maps.LatLng(42.6466, -73.7805);
+	zoom = 15;
+	}
+	if(ward == 'ALB008') {
+	center = new google.maps.LatLng(42.6552, -73.8037);
+	zoom = 14;
+	}
+	if(ward == 'ALB009') {
+	center = new google.maps.LatLng(42.6552, -73.8037);
+	zoom = 15;
+	}
+	if(ward == 'ALB010' || ward == 'ALB011') {
+	center = new google.maps.LatLng(42.6615, -73.7820);
+	zoom = 15;
+	}
+	if(ward == 'ALB012' || ward == 'ALB013' || ward == 'ALB014') {
+	center = new google.maps.LatLng(42.6815, -73.7971);
+	zoom = 14;
+	}
+	if(ward == 'ALB015') {
+	center = new google.maps.LatLng(42.6865, -73.8272);
+	zoom = 13;
+	}
+	if(ward == 'WAT001') {
+	center = new google.maps.LatLng(42.7122, -73.7119);
+	zoom = 15;
+	}
+	if(ward == 'WAT002') {
+	center = new google.maps.LatLng(42.7301, -73.7012);
+	zoom = 15;
+	}
+	if(ward == 'WAT003') {
+	center = new google.maps.LatLng(42.7350, -73.7107);
+	zoom = 16;
+	}
+	if(ward == 'WAT004') {
+	center = new google.maps.LatLng(42.7301, -73.7012);
+	zoom = 15;
+	}
+map = new google.maps.Map(document.getElementById('map'), {
+    center: center,
+    zoom: zoom,
+    mapTypeId: google.maps.MapTypeId.ROADMAP
+  });
+  whereclause = "WARD = '" + ward + "'";
+    layer = new google.maps.FusionTablesLayer({
+     query: {
+      select: location_column,
+      from: tableid,
+	  where: whereclause
+     }
+    });
+  layer.setMap(map);
+  column = ward;
+  updateLegend(column, tval);
+}
+
+function createEdDropdown(response) {
+if (!response) {
+  alert('no response');
+  return;
+}
+if (response.isError()) {
+  alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+  return;
+} 
+  numRows = response.getDataTable().getNumberOfRows();
+  numCols = response.getDataTable().getNumberOfColumns();
+  var columns = {};
+  for (var i = 0; i < numRows; i++) {
+    var column = response.getDataTable().getValue(i,0);
+    columns[column] = column;
+  }
+  var columnNameDropdown = "Election District:<br /> <select id='edselector' onchange='map_ed(this.value);'>"
+  columnNameDropdown += '<option selected>Select ED<\/option>';
+  for (column in columns) {
+    columnNameDropdown += "<option value='"+column+"'>"+column+"</option>"
+  }
+  columnNameDropdown += "</select>"
+  document.getElementById('edselector').parentNode.innerHTML = columnNameDropdown;
+}
+
+function map_ed(district) {
+map = new google.maps.Map(document.getElementById('map'), {
+    center: center,
+    zoom: zoom,
+    mapTypeId: google.maps.MapTypeId.ROADMAP
+  });
+whereclause = "DISTRICT = '" + district + "'";
+layer = new google.maps.FusionTablesLayer({
+    query: {
+      select: location_column,
+      from: tableid,
+	  where: whereclause
+    }
+  });
+  layer.setMap(map);
+  column = district;
+  updateLegend(column, tval);
+}
+
+
+// Create the legend with the corresponding colors
+function updateLegend(column, tval) {
+  var legendDiv = document.createElement('div');
+  var legend = new Legend(legendDiv, column, tval);
+  legendDiv.index = 1;
+  map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].pop();
+  map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legendDiv);
+}
+
+// Generate the content for the legend
+function Legend(controlDiv, column, tval) {
+  controlDiv.style.padding = '10px';
+  var controlUI = document.createElement('div');
+  controlUI.style.backgroundColor = 'white';
+  controlUI.style.borderStyle = 'solid';
+  controlUI.style.borderWidth = '1px';
+  controlUI.style.width = legend_width;
+  controlUI.title = 'Legend';
+  controlDiv.appendChild(controlUI);
+  var controlText = document.createElement('div');
+  controlText.style.fontFamily = 'Arial,sans-serif';
+  controlText.style.fontSize = '12px';
+  controlText.style.paddingLeft = '4px';
+  controlText.style.paddingRight = '4px';
+
+  controlText.innerHTML = legendContent(column, tval);
+  controlUI.appendChild(controlText);
+}
+
+function legendContent(column, tval) {
+	var controlTextList = new Array();
+    var towntxt = tval;
+	var wardtxt = column.slice(3,6);
+	var edtxt = column.slice(6,9)
+	
+	if(towntxt == 'Albany' || towntxt == 'Cohoes' || towntxt == 'Watervliet') {
+	controlTextList.push('<p><b>City of ');
+	}
+	else {
+	controlTextList.push('<p><b>Town of ');
+	}
+	controlTextList.push(towntxt);
+	controlTextList.push('</b></p>');
+	
+	if(wardtxt != '000' && column.length > 3) {
+	controlTextList.push('<p><b>Ward: ');
+	controlTextList.push(wardtxt);
+	controlTextList.push('</b></p>');
+	}
+	
+	if(column.length == '9'){
+	controlTextList.push('<p><b>Election District: ');
+	controlTextList.push(edtxt);
+	controlTextList.push('</b></p>');
+	controlTextList.push('<a href="ED/' + column + '.pdf" target="_blank">');
+	controlTextList.push('<img src="img/printable-pdf.png" alt="Print PDF" style="text-decoration:none;border:0" title="Print PDF">');
+	controlTextList.push('</a>');
+	}
+    
+	return controlTextList.join('');
+}
+
+function resize() {
+
+    var windowHeight = document.getElementById("maptd").offsetHeight;
+    var windowWidth = document.getElementById("mtable").offsetWidth;
+    var mapCanvasDiv = document.getElementById("map");
+    var menuImg = document.getElementById("imenu");              
+    var menuConteudoDiv = document.getElementById("cmenu");     
+    var menuDiv = document.getElementById("menu");                      
+
+    menuImg.style.marginTop = parseInt((windowHeight - menuImg.height) / 2) + "px";
+    menuImg.style.marginBottom = parseInt((windowHeight - menuImg.height) / 2) + "px";
+    menuDiv.style.width = (menuImg.width + 50 + parseInt(menuConteudoDiv.style.width)) + "px";
+    menuDiv.style.height = windowHeight + "px";
+    mapCanvasDiv.style.width = (windowWidth * 1 - parseInt(menuDiv.style.width) - parseInt(menuDiv.style.right)) + "px";
+    mapCanvasDiv.style.height = windowHeight + "px";
+}
+
+function resizeBody() {
+    resize();
+	//google.maps.event.trigger(map, "resize");
+}
+function showMenu() {
+    var windowWidth = document.getElementById("maptd").offsetWidth;
+    var imgObj = document.getElementById("imenu");
+    var menuDiv = document.getElementById("menu");
+    var menuConteudoDiv = document.getElementById("cmenu");
+
+	menuDiv.style.right = (parseInt(menuDiv.style.right) + (parseInt(menuDiv.style.width) - imgObj.width) / 10) + "px";
+	
+    if (parseInt(menuDiv.style.right) < 0) {
+		window.setTimeout("showMenu()", 10);
+	}
+	else {	
+		imgObj.src = "img/hide_menu.gif";
+		imgObj.title = "Hide the menu.";
+		imgObj.onclick = hideMenu;
+		
+		var mapCanvasDiv = document.getElementById("map");	
+		mapCanvasDiv.style.width = (windowWidth * 1 - parseInt(menuDiv.style.width)) + "px";
+		google.maps.event.trigger(map, "resize");
+	}
+}
+
+function hideMenu() {
+    var windowWidth = document.getElementById("maptd").offsetWidth;
+    var imgObj = document.getElementById("imenu");
+	var mapCanvasDiv = document.getElementById("map");
+
+	if (mapCanvasDiv.style.width != (windowWidth * 1 - 42) + "px") {
+	    mapCanvasDiv.style.width = (windowWidth * 1 - 42) + "px";
+	    google.maps.event.trigger(map, "resize");
+	}
+
+    var menuDiv = document.getElementById("menu");
+    var menuConteudoDiv = document.getElementById("cmenu");
+
+    menuDiv.style.right = (parseInt(menuDiv.style.right) - (parseInt(menuDiv.style.width) - imgObj.width) / 10) + "px";
+    if (parseInt(menuDiv.style.right) > 0 - parseInt(menuConteudoDiv.style.width) - 50) {
+		window.setTimeout("hideMenu()", 10);
+	}
+    else {
+		imgObj.src = "img/show_menu.gif";
+		imgObj.title = "Show the menu.";
+		imgObj.onclick = showMenu;
+	}
+	
+}
+
+
+</script>
+<style type="text/css">
+body
+{
+margin: 0;
+padding: 0;
+font-family: 'trebuchet ms', arial, helvitica, sans-serif;
+}
+#top
+{
+	margin: 0;
+	padding: 0;
+	height: 34px;
+}
+#menu
+{
+	margin: 0px;
+	padding: 0px;
+	background-color: #e6e6e6;
+	overflow: auto;
+}
+
+#cmenu
+{
+	margin: 0px;
+	padding: 10px 10px 5px 0px;
+}
+
+#mtable
+{
+	z-index: 1;
+	position: absolute;
+}
+.input, select {
+	font-size: large;
+	padding: 4px 2px;
+	border: 1px solid #3c4b37;
+	width:80%;
+	margin-bottom: 12px;
+}
+</style>
+</head>
+<body onload="initialize()" onresize="resizeBody()" style="overflow: hidden">
+	<table id="mtable" border="0" cellspacing="0" cellpadding="0" style="width: 100%; height:100%;">
+	    <tr>
+		<td id="top" style="height:34px">
+		<!-- START MASTHEAD -->
+		<div style="background-image: url('http://www.albanycounty.com/_acc-images/inside-pages/inside-header-bg32.jpg'); width: 100%; padding: 0px; margin: 0px; background-repeat: repeat-x; background-color: #D7E0D4; clear: both;"><a href="http://www.albanycounty.com/"><img alt="AlbanyCounty.com: The official website of the government of Albany County, New York" src="http://www.albanycounty.com/_acc-images/inside-pages/inside-header-34.jpg" border="0" width="600" height="34" /></a></div>
+		<!-- END MASTHEAD -->
+		</td>
+		</tr>
+        <tr>
+        	<td id="maptd">
+            	<div id="map" style="float:left; z-index: 1; position: relative"></div>
+                <div id="menu" style="right: 0px; position: absolute; z-index: 2; background-image:url('img/bg_menu.gif')">
+                    <img id="imenu" alt="Menu" src="img/hide_menu.gif" width="42" height="130" onClick="hideMenu()" style="display:block; float:left; position:relative"/>
+                    <div id="cmenu" style="width: 240px; float:left; position: relative">
+					    <div id="leftlogo" style="text-align:center;"><a href="http://www.albanycounty.com/vote/"><img src="img/ed-side-sealBGr.jpg" alt="Albany County Board of Elections" title="Albany County Board of Elections" border="0"></a></div>
+						<div id="instructions"><p style="font-size: small;font-style: italic;padding-bottom: 6px">Display individual municipalities, wards and election districts.</p></div>
+						<div id="townselectdiv">Municipality:<br />
+							<select onchange="init_wardmenu(this.value);" id="townselector"></select>
+						</div>
+						<div id="wardselectdiv">
+							<select onchange="init_edmenu(this.value);" id="wardselector" style="display:none"></select>
+						</div>
+						<div id="edselectdiv">
+							<select onchange="map_ed(this.value);" id="edselector" style="display:none"></select>
+						</div>
+                    </div>
+				</div>
+            </td>
+        </tr>
+    </table>
+	<!-- mathiasbynens.be/notes/async-analytics-snippet Change UA-XXXXX-X to be your site's ID -->
+  <script>
+    var _gaq=[["_setAccount","UA-25743213-1"],["_trackPageview"]];
+    (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];g.async=1;
+    g.src=("https:"==location.protocol?"//ssl":"//www")+".google-analytics.com/ga.js";
+    s.parentNode.insertBefore(g,s)}(document,"script"));
+  </script>
+</body>
+</html>
